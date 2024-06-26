@@ -144,15 +144,6 @@ def load_image(url, imageName=None, imageTag=None):
 
     Returns an object with properties 'image', 'tag' and 'layer'.
     """
-    if isinstance(zstd, ImportError):
-        raise ImportError(
-            dedent(
-                """
-                zstandard is not installed! Use `pip install taskcluster-taskgraph[load-image]`
-                to use this feature.
-                """
-            )
-        ) from zstd
 
     # If imageName is given and we don't have an imageTag
     # we parse out the imageTag from imageName, or default it to 'latest'
@@ -173,11 +164,21 @@ def load_image(url, imageName=None, imageTag=None):
         req = get_session().get(url, stream=True)
         req.raise_for_status()
 
-        with zstd.ZstdDecompressor().stream_reader(req.raw) as ifh:  # type: ignore
+        if isinstance(zstd, ImportError):
+            raise ImportError(
+                dedent(
+                    """
+                    zstandard is not installed! Use `pip install taskcluster-taskgraph[load-image]`
+                    to use this feature.
+                    """
+                )
+            ) from zstd
+
+        with zstd.ZstdDecompressor().stream_reader(req.raw) as ifh:
             tarin = tarfile.open(
                 mode="r|",
                 fileobj=ifh,
-                bufsize=zstd.DECOMPRESSION_RECOMMENDED_OUTPUT_SIZE,  # type: ignore
+                bufsize=zstd.DECOMPRESSION_RECOMMENDED_OUTPUT_SIZE,
             )
 
             # Stream through each member of the downloaded tar file individually.
@@ -217,7 +218,7 @@ def load_image(url, imageName=None, imageTag=None):
                 # Then emit its content.
                 remaining = member.size
                 while remaining:
-                    length = min(remaining, zstd.DECOMPRESSION_RECOMMENDED_OUTPUT_SIZE)  # type: ignore
+                    length = min(remaining, zstd.DECOMPRESSION_RECOMMENDED_OUTPUT_SIZE)
                     buf = reader.read(length)  # type: ignore
                     remaining -= len(buf)
                     yield buf

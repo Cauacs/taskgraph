@@ -191,12 +191,15 @@ def load_image(url, imageName=None, imageTag=None):
                 # Open stream reader for the member
                 reader = tarin.extractfile(member)
 
+                if reader is None:
+                    continue
+
                 # If member is `repositories`, we parse and possibly rewrite the
                 # image tags.
                 if member.name == "repositories":
                     # Read and parse repositories
-                    repos = json.loads(reader.read())  # type: ignore
-                    reader.close()  # type: ignore
+                    repos = json.loads(reader.read())
+                    reader.close()
 
                     # If there is more than one image or tag, we can't handle it
                     # here.
@@ -219,7 +222,7 @@ def load_image(url, imageName=None, imageTag=None):
                 remaining = member.size
                 while remaining:
                     length = min(remaining, zstd.DECOMPRESSION_RECOMMENDED_OUTPUT_SIZE)
-                    buf = reader.read(length)  # type: ignore
+                    buf = reader.read(length)
                     remaining -= len(buf)
                     yield buf
                 # Pad to fill a 512 bytes block, per tar format.
@@ -227,7 +230,7 @@ def load_image(url, imageName=None, imageTag=None):
                 if remainder:
                     yield ("\0" * (512 - remainder)).encode("utf-8")
 
-                reader.close()  # type: ignore
+                reader.close()
 
     subprocess.run(
         ["docker", "image", "load"], input=b"".join(download_and_modify_image())
